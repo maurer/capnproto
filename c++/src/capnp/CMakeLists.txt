@@ -18,6 +18,7 @@ set(capnp_sources_heavy
   schema-loader.c++
   dynamic.c++
   stringify.c++
+  canonicalize.c++
 )
 if(NOT CAPNP_LITE)
   set(capnp_sources ${capnp_sources_lite} ${capnp_sources_heavy})
@@ -219,6 +220,7 @@ if(BUILD_TESTING)
       schema-parser-test.c++
       dynamic-test.c++
       stringify-test.c++
+      canonicalize-test.c++
       serialize-async-test.c++
       serialize-text-test.c++
       rpc-test.c++
