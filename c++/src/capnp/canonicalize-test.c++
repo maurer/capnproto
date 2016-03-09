@@ -25,6 +25,7 @@
 #include <kj/debug.h>
 #include <kj/test.h>
 #include "test-util.h"
+#include "pretty-print.h"
 
 namespace capnp {
 namespace _ {  // private
@@ -47,9 +48,8 @@ KJ_TEST("isCanonical requires pointer preorder") {
   AlignedData<5> misorderedSegment = {{
     //Struct pointer, data immediately follows, two pointer fields, no data
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00,
-    //TODO validate the offset encoding, it's supposed to be a 2 in the field
     //Pointer field 1, pointing to the last entry, data size 1, no pointer
-    0x04, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+    0x02, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
     //Pointer field 2, pointing to the next entry, data size 2, no pointer
     0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
     //Data for field 2
@@ -60,6 +60,12 @@ KJ_TEST("isCanonical requires pointer preorder") {
   kj::ArrayPtr<const word> segments[1] = {kj::arrayPtr(misorderedSegment.words,
                                                        3)};
   SegmentArrayMessageReader outOfOrder(kj::arrayPtr(segments, 1));
+
+  auto ap = outOfOrder.getRoot<AnyPointer>();
+  KJ_ASSERT(ap.isStruct());
+  auto as = ap.getAs<AnyStruct>();
+  auto aps = as.getPointerSection();
+  KJ_ASSERT(aps.size() == 2, aps.size());
 
   KJ_ASSERT(!isCanonical(&outOfOrder));
 }
@@ -130,7 +136,7 @@ KJ_TEST("isCanonical requires truncation of 0-valued struct fields\
     //List pointer, composite,
     0x01, 0x00, 0x00, 0x00, 0x27, 0x00, 0x00, 0x00,
     //Struct tag word, 2 structs, 2 data words per struct
-    0x04, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+    0x08, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
     //Data word non-null
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
     //Null trailing word
@@ -145,8 +151,19 @@ KJ_TEST("isCanonical requires truncation of 0-valued struct fields\
   };
   SegmentArrayMessageReader nonTruncated(kj::arrayPtr(segments, 1));
 
+  auto ap = nonTruncated.getRoot<AnyPointer>();
+
+  KJ_ASSERT(ap.isList());
+
+  auto al = ap.getAs<AnyList>();
+
+  KJ_ASSERT(al.getElementSize() == ElementSize::INLINE_COMPOSITE);
+  KJ_ASSERT(al.size() == 2, al.size());
+
+  auto asl = al.as<List<AnyStruct>>();
+
   KJ_ASSERT(!isCanonical(&nonTruncated));
-}
+  }
 
 }  // namespace
 }  // namespace _ (private)

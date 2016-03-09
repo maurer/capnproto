@@ -19,7 +19,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+#define CAPNP_PRIVATE
 #include "dynamic.h"
+#include "layout.h"
+#include "arena.h"
 #include <kj/debug.h>
 #include <kj/vector.h>
 
@@ -29,7 +32,25 @@ void canonicalize(DynamicValue::Reader value, MessageBuilder* out) {
 }
 
 bool isCanonical(MessageReader *msg) {
-  return false;
+  _::ReaderArena ra(msg);
+  _::SegmentReader *segment = ra.tryGetSegment(_::SegmentId(0));
+
+  if (segment == NULL) {
+    // The message has no segments
+    return false;
+  }
+
+  if (ra.tryGetSegment(_::SegmentId(1))) {
+    // The message has more than one segment
+    return false;
+  }
+
+  // TODO check the message for a captable and reject?
+
+  const word* readHead = segment->getStartPtr() + 1;
+  return _::PointerReader::getRoot(segment, nullptr, segment->getStartPtr(),
+                                   msg->getOptions().nestingLimit)
+                                  .isCanonical(&readHead);
 }
 
 bool isCanonical(MessageBuilder *msg) {

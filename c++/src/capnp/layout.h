@@ -436,6 +436,13 @@ public:
   PointerReader imbue(CapTableReader* capTable) const;
   // Return a copy of this reader except using the given capability context.
 
+  bool isCanonical(const word **readHead);
+  // Validate this pointer's canonicity, subject to the conditions:
+  // * All data to the left of readHead has been read thus far (for pointer
+  //   ordering)
+  // * All pointers in preorder have already been checked
+  // * This pointer is in the first and only segment of the message
+
 private:
   SegmentReader* segment;      // Memory segment in which the pointer resides.
   CapTableReader* capTable;    // Table of capability indexes.
@@ -594,6 +601,20 @@ public:
 
   StructReader imbue(CapTableReader* capTable) const;
   // Return a copy of this reader except using the given capability context.
+
+  bool isCanonical(const word **readHead, bool *dataTrunc, bool *ptrTrunc);
+  // Validate this pointer's canonicity, subject to the conditions:
+  // * All data to the left of readHead has been read thus far (for pointer
+  //   ordering)
+  // * All pointers in preorder have already been checked
+  // * This pointer is in the first and only segment of the message
+  //
+  // If this function returns false, the struct is non-canonical. If it
+  // returns true, then:
+  // * If it is a composite in a list, it is canonical if at least one struct
+  //   in the list outputs dataTrunc = 1, and at least one outputs ptrTrunc = 1
+  // * If it is derived from a struct pointer, it is canonical if
+  //   dataTrunc = 1 AND ptrTrunc = 1
 
 private:
   SegmentReader* segment;    // Memory segment in which the struct resides.
@@ -757,6 +778,13 @@ public:
 
   ListReader imbue(CapTableReader* capTable) const;
   // Return a copy of this reader except using the given capability context.
+
+  bool isCanonical(const word **readHead);
+  // Validate this pointer's canonicity, subject to the conditions:
+  // * All data to the left of readHead has been read thus far (for pointer
+  //   ordering)
+  // * All pointers in preorder have already been checked
+  // * This pointer is in the first and only segment of the message
 
 private:
   SegmentReader* segment;    // Memory segment in which the list resides.

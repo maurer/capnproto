@@ -2468,6 +2468,35 @@ PointerReader PointerReader::imbue(CapTableReader* capTable) const {
   return result;
 }
 
+bool PointerReader::isCanonical(const word **readHead) {
+  if (!this->pointer) {
+    // The pointer is null, so we are canonical and do not read
+    return true;
+  }
+
+  if (!this->pointer->isPositional()) {
+    // The pointer is a FAR or OTHER pointer, and is non-canonical
+    return false;
+  }
+
+  switch (this->getPointerType()) {
+    case PointerType::NULL_:
+      // The pointer is null, we are canonical and do not read
+      return true;
+    case PointerType::STRUCT:
+      bool dataTrunc, ptrTrunc;
+      return (this->getStruct(nullptr).isCanonical(readHead,
+                                                   &dataTrunc,
+                                                   &ptrTrunc)
+              && dataTrunc && ptrTrunc);
+    case PointerType::LIST:
+      return this->getListAnySize(nullptr).isCanonical(readHead);
+    case PointerType::CAPABILITY:
+      KJ_FAIL_ASSERT("Capabilities are not positional");
+  }
+  KJ_UNREACHABLE;
+}
+
 // =======================================================================================
 // StructBuilder
 
@@ -2609,6 +2638,49 @@ StructReader StructReader::imbue(CapTableReader* capTable) const {
   return result;
 }
 
+bool StructReader::isCanonical(const word **readHead,
+                               bool *dataTrunc,
+                               bool *ptrTrunc) {
+  if (this->getLocation() != *readHead) {
+    // Our target area is not at the readHead, preorder fails
+    return false;
+  }
+
+  if (this->getDataSectionSize() % BITS_PER_WORD != 0) {
+    // Using legacy non-word-size structs, reject
+    return false;
+  }
+  WordCount32 dataSize = this->getDataSectionSize() / BITS_PER_WORD;
+
+  // Mark whether the struct is properly truncated
+  // TODO: uint64_t is surely the wrong type here, but word is uncopyable
+  if (dataSize != 0) {
+    *dataTrunc = this->getDataField<uint64_t>(dataSize - 1) != 0;
+  } else {
+    *dataTrunc = true;
+  }
+
+  if (this->pointerCount != 0) {
+    *ptrTrunc  = !this->getPointerField(this->pointerCount - 1).isNull();
+  } else {
+    *ptrTrunc = true;
+  }
+
+  // Advance the read head
+  *readHead += dataSize + this->pointerCount;
+
+  // Check each pointer field for canonicity
+  for (WirePointerCount16 ptrIndex = 0;
+       ptrIndex < this->pointerCount;
+       ptrIndex++) {
+    if (!this->getPointerField(ptrIndex).isCanonical(readHead)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 // =======================================================================================
 // ListBuilder
 
@@ -2746,6 +2818,69 @@ ListReader ListReader::imbue(CapTableReader* capTable) const {
   auto result = *this;
   result.capTable = capTable;
   return result;
+}
+
+bool ListReader::isCanonical(const word **readHead) {
+  switch (this->getElementSize()) {
+    case ElementSize::INLINE_COMPOSITE: {
+      if (reinterpret_cast<const word*>(this->ptr) != (*readHead) + 1) {
+        // The next word to read is the tag word, but the pointer is in
+        // front of it, so our check is slightly different
+        return false;
+      }
+      if (this->structDataSize % BITS_PER_WORD != 0) {
+        return false;
+      }
+      auto structSize = (this->structDataSize / BITS_PER_WORD) +
+                        (this->structPointerCount * WORDS_PER_POINTER);
+      *readHead += this->elementCount * structSize;
+      bool listDataTrunc = false;
+      bool listPtrTrunc = false;
+      for (ElementCount ec = ElementCount(0);
+           ec < this->elementCount;
+           ec++) {
+        bool dataTrunc, ptrTrunc;
+        if (!this->getStructElement(ec).isCanonical(readHead,
+                                                    &dataTrunc,
+                                                    &ptrTrunc)) {
+          return false;
+        }
+        listDataTrunc |= dataTrunc;
+        listPtrTrunc  |= ptrTrunc;
+      }
+      return listDataTrunc && listPtrTrunc;
+    }
+    case ElementSize::POINTER: {
+      if (reinterpret_cast<const word*>(this->ptr) != *readHead) {
+        return false;
+      }
+      *readHead += this->elementCount;
+      for (ElementCount ec = ElementCount(0);
+           ec < this->elementCount;
+           ec++) {
+        if (!this->getPointerElement(ec).isCanonical(readHead)) {
+          return false;
+        }
+      }
+      return true;
+    }
+    default: {
+      if (reinterpret_cast<const word*>(this->ptr) != *readHead) {
+        return false;
+      }
+
+      auto bitSize = this->elementCount *
+                     dataBitsPerElement(this->elementSize);
+      auto wordSize = bitSize / BITS_PER_WORD;
+      if (bitSize % BITS_PER_WORD != 0) {
+        wordSize++;
+      }
+
+      *readHead += wordSize;
+      return true;
+    }
+  }
+  KJ_UNREACHABLE;
 }
 
 // =======================================================================================
