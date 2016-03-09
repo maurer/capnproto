@@ -160,8 +160,6 @@ KJ_TEST("isCanonical requires truncation of 0-valued struct fields\
   KJ_ASSERT(al.getElementSize() == ElementSize::INLINE_COMPOSITE);
   KJ_ASSERT(al.size() == 2, al.size());
 
-  auto asl = al.as<List<AnyStruct>>();
-
   KJ_ASSERT(!isCanonical(&nonTruncated));
   }
 
