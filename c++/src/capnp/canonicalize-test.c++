@@ -20,12 +20,11 @@
 // THE SOFTWARE.
 
 #include "message.h"
-#include "dynamic.h"
+#include "any.h"
 #include "canonicalize.h"
 #include <kj/debug.h>
 #include <kj/test.h>
 #include "test-util.h"
-#include "pretty-print.h"
 
 namespace capnp {
 namespace _ {  // private
@@ -38,7 +37,7 @@ KJ_TEST("canonicalize yields cannonical message") {
   initTestMessage(root);
 
   MallocMessageBuilder canonicalMessage;
-  canonicalize(builder.getRoot<DynamicStruct>(Schema::from<TestAllTypes>())
+  canonicalize(builder.getRoot<AnyPointer>()
                       .asReader(),
                &canonicalMessage);
   KJ_ASSERT(isCanonical(&canonicalMessage));

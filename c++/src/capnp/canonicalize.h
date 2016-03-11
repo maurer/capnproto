@@ -41,7 +41,7 @@ namespace capnp {
 // a retranslation (for example, when incrementally generating a list,
 // it would be impossible to know until the last element of the list was
 // present how to encode the list).
-void canonicalize(DynamicValue::Reader value, MessageBuilder *out);
+void canonicalize(AnyPointer::Reader value, MessageBuilder *out);
 
 // Validate the canonicity of a message.
 bool isCanonical(MessageReader *msg);

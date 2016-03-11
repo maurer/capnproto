@@ -28,7 +28,19 @@
 
 namespace capnp {
 
-void canonicalize(DynamicValue::Reader value, MessageBuilder* out) {
+void canonicalize(AnyPointer::Reader value, MessageBuilder* out) {
+  /*
+  MessageSize ms = value.targetSize();
+  KJ_REQUIRE(ms.capCount == 0, "We cannot canonicalize capabilities") {
+    return;
+  }
+  WordCount total = (ms.wordCount * WORDS) + POINTER_SIZE_IN_WORDS;
+  // This size should exceed the required size for the whole message, so we
+  // should not need an extra segment if our initial one is this big.
+  */
+
+  auto target = out->initRoot<AnyPointer>();
+  target.setCanonical(value);
 }
 
 bool isCanonical(MessageReader *msg) {

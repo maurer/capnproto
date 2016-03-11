@@ -339,9 +339,9 @@ public:
   // Init methods:  Initialize the pointer to a newly-allocated object, discarding the existing
   // object.
 
-  void setStruct(const StructReader& value);
-  void setList(const ListReader& value);
-  template <typename T> void setBlob(typename T::Reader value);
+  void setStruct(const StructReader& value, bool canonical = false);
+  void setList(const ListReader& value, bool canonical = false);
+  template <typename T> void setBlob(typename T::Reader value, bool canonical = false);
 #if !CAPNP_LITE
   void setCapability(kj::Own<ClientHook>&& cap);
 #endif  // !CAPNP_LITE
@@ -360,8 +360,10 @@ public:
   void transferFrom(PointerBuilder other);
   // Equivalent to `adopt(other.disown())`.
 
-  void copyFrom(PointerReader other);
+  void copyFrom(PointerReader other, bool canonical = false);
   // Equivalent to `set(other.get())`.
+  // If you set the canonical flag, it will attempt to lay the target out
+  // canonically, provided enough space is available.
 
   PointerReader asReader() const;
 
@@ -943,12 +945,12 @@ private:
 
 // These are defined in the source file.
 template <> typename Text::Builder PointerBuilder::initBlob<Text>(ByteCount size);
-template <> void PointerBuilder::setBlob<Text>(typename Text::Reader value);
+template <> void PointerBuilder::setBlob<Text>(typename Text::Reader value, bool canonical);
 template <> typename Text::Builder PointerBuilder::getBlob<Text>(const void* defaultValue, ByteCount defaultSize);
 template <> typename Text::Reader PointerReader::getBlob<Text>(const void* defaultValue, ByteCount defaultSize) const;
 
 template <> typename Data::Builder PointerBuilder::initBlob<Data>(ByteCount size);
-template <> void PointerBuilder::setBlob<Data>(typename Data::Reader value);
+template <> void PointerBuilder::setBlob<Data>(typename Data::Reader value, bool canonical);
 template <> typename Data::Builder PointerBuilder::getBlob<Data>(const void* defaultValue, ByteCount defaultSize);
 template <> typename Data::Reader PointerReader::getBlob<Data>(const void* defaultValue, ByteCount defaultSize) const;
 
