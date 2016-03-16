@@ -2552,9 +2552,10 @@ bool PointerReader::isCanonical(const word **readHead) {
     case PointerType::STRUCT:
       bool dataTrunc, ptrTrunc;
       return (this->getStruct(nullptr).isCanonical(readHead,
+                                                   readHead,
                                                    &dataTrunc,
                                                    &ptrTrunc)
-              && dataTrunc && ptrTrunc);
+             && dataTrunc && ptrTrunc);
     case PointerType::LIST:
       return this->getListAnySize(nullptr).isCanonical(readHead);
     case PointerType::CAPABILITY:
@@ -2705,6 +2706,7 @@ StructReader StructReader::imbue(CapTableReader* capTable) const {
 }
 
 bool StructReader::isCanonical(const word **readHead,
+                               const word **ptrHead,
                                bool *dataTrunc,
                                bool *ptrTrunc) {
   if (this->getLocation() != *readHead) {
@@ -2739,7 +2741,7 @@ bool StructReader::isCanonical(const word **readHead,
   for (WirePointerCount16 ptrIndex = 0;
        ptrIndex < this->pointerCount;
        ptrIndex++) {
-    if (!this->getPointerField(ptrIndex).isCanonical(readHead)) {
+    if (!this->getPointerField(ptrIndex).isCanonical(ptrHead)) {
       return false;
     }
   }
@@ -2889,7 +2891,8 @@ ListReader ListReader::imbue(CapTableReader* capTable) const {
 bool ListReader::isCanonical(const word **readHead) {
   switch (this->getElementSize()) {
     case ElementSize::INLINE_COMPOSITE: {
-      if (reinterpret_cast<const word*>(this->ptr) != (*readHead) + 1) {
+      *readHead += 1;
+      if (reinterpret_cast<const word*>(this->ptr) != *readHead) {
         // The next word to read is the tag word, but the pointer is in
         // front of it, so our check is slightly different
         return false;
@@ -2899,7 +2902,8 @@ bool ListReader::isCanonical(const word **readHead) {
       }
       auto structSize = (this->structDataSize / BITS_PER_WORD) +
                         (this->structPointerCount * WORDS_PER_POINTER);
-      *readHead += this->elementCount * structSize;
+      auto listEnd = *readHead + this->elementCount * structSize;
+      auto pointerHead = listEnd;
       bool listDataTrunc = false;
       bool listPtrTrunc = false;
       for (ElementCount ec = ElementCount(0);
@@ -2907,6 +2911,7 @@ bool ListReader::isCanonical(const word **readHead) {
            ec++) {
         bool dataTrunc, ptrTrunc;
         if (!this->getStructElement(ec).isCanonical(readHead,
+                                                    &pointerHead,
                                                     &dataTrunc,
                                                     &ptrTrunc)) {
           return false;
@@ -2914,6 +2919,8 @@ bool ListReader::isCanonical(const word **readHead) {
         listDataTrunc |= dataTrunc;
         listPtrTrunc  |= ptrTrunc;
       }
+      KJ_REQUIRE(*readHead == listEnd, *readHead, listEnd);
+      *readHead = pointerHead;
       return listDataTrunc && listPtrTrunc;
     }
     case ElementSize::POINTER: {

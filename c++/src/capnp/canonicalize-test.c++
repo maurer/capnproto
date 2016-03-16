@@ -135,7 +135,7 @@ KJ_TEST("isCanonical requires truncation of 0-valued struct fields\
     //List pointer, composite,
     0x01, 0x00, 0x00, 0x00, 0x27, 0x00, 0x00, 0x00,
     //Struct tag word, 2 structs, 2 data words per struct
-    0x08, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+    0x08, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00,
     //Data word non-null
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
     //Null trailing word
@@ -157,11 +157,14 @@ KJ_TEST("isCanonical requires truncation of 0-valued struct fields\
   auto al = ap.getAs<AnyList>();
 
   KJ_ASSERT(al.getElementSize() == ElementSize::INLINE_COMPOSITE);
-  KJ_ASSERT(al.size() == 2, al.size());
+
+  auto als = al.as<List<AnyStruct>>();
+  KJ_ASSERT(als.size() == 2, als.size());
+  auto as0 = als[0];
+  KJ_ASSERT(as0.getDataSection().size() == 16, as0.getDataSection().size());
 
   KJ_ASSERT(!isCanonical(&nonTruncated));
-  }
-
+}
 }  // namespace
 }  // namespace _ (private)
 }  // namespace capnp
