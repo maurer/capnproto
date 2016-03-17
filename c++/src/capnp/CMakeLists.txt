@@ -12,7 +12,6 @@ set(capnp_sources_lite
   schema.capnp.c++
   serialize.c++
   serialize-packed.c++
-  canonicalize.c++
 )
 set(capnp_sources_heavy
   schema.c++

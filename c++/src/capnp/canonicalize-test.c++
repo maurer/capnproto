@@ -21,7 +21,6 @@
 
 #include "message.h"
 #include "any.h"
-#include "canonicalize.h"
 #include <kj/debug.h>
 #include <kj/test.h>
 #include "test-util.h"
@@ -37,10 +36,8 @@ KJ_TEST("canonicalize yields cannonical message") {
   initTestMessage(root);
 
   MallocMessageBuilder canonicalMessage;
-  canonicalize(builder.getRoot<AnyPointer>()
-                      .asReader(),
-               &canonicalMessage);
-  KJ_ASSERT(isCanonical(&canonicalMessage));
+  canonicalMessage.canonicalRoot(builder.getRoot<AnyPointer>().asReader());
+  KJ_ASSERT(canonicalMessage.isCanonical());
 }
 
 KJ_TEST("isCanonical requires pointer preorder") {
@@ -66,7 +63,7 @@ KJ_TEST("isCanonical requires pointer preorder") {
   auto aps = as.getPointerSection();
   KJ_ASSERT(aps.size() == 2, aps.size());
 
-  KJ_ASSERT(!isCanonical(&outOfOrder));
+  KJ_ASSERT(!outOfOrder.isCanonical());
 }
 
 KJ_TEST("isCanonical requires dense packing") {
@@ -83,7 +80,7 @@ KJ_TEST("isCanonical requires dense packing") {
                                                        3)};
   SegmentArrayMessageReader gap(kj::arrayPtr(segments, 1));
 
-  KJ_ASSERT(!isCanonical(&gap));
+  KJ_ASSERT(!gap.isCanonical());
 }
 
 KJ_TEST("isCanonical rejects multi-segment messages") {
@@ -105,13 +102,13 @@ KJ_TEST("isCanonical rejects multi-segment messages") {
   };
 
   SegmentArrayMessageReader multiSegmentMessage(kj::arrayPtr(segments, 2));
-  KJ_ASSERT(!isCanonical(&multiSegmentMessage));
+  KJ_ASSERT(!multiSegmentMessage.isCanonical());
 }
 
 KJ_TEST("isCanonical rejects zero segment messages") {
   SegmentArrayMessageReader zero(kj::arrayPtr((kj::ArrayPtr<const word>*)NULL,
                                                0));
-  KJ_ASSERT(!isCanonical(&zero));
+  KJ_ASSERT(!zero.isCanonical());
 }
 
 KJ_TEST("isCanonical requires truncation of 0-valued struct fields") {
@@ -126,7 +123,7 @@ KJ_TEST("isCanonical requires truncation of 0-valued struct fields") {
   };
   SegmentArrayMessageReader nonTruncated(kj::arrayPtr(segments, 1));
 
-  KJ_ASSERT(!isCanonical(&nonTruncated));
+  KJ_ASSERT(!nonTruncated.isCanonical());
 }
 
 KJ_TEST("isCanonical requires truncation of 0-valued struct fields\
@@ -163,7 +160,7 @@ KJ_TEST("isCanonical requires truncation of 0-valued struct fields\
   auto as0 = als[0];
   KJ_ASSERT(as0.getDataSection().size() == 16, as0.getDataSection().size());
 
-  KJ_ASSERT(!isCanonical(&nonTruncated));
+  KJ_ASSERT(!nonTruncated.isCanonical());
 }
 }  // namespace
 }  // namespace _ (private)
