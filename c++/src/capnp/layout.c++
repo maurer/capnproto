@@ -356,7 +356,7 @@ struct WireHelpers {
         return reinterpret_cast<word*>(ref);
       }
 
-      // TODO(MRM) add hook to allocate to demand the sequentially next memory
+      // Hope this generates sequential memory, validate with isCanonical
       word* ptr = segment->allocate(amount);
 
       if (ptr == nullptr) {
@@ -2721,7 +2721,6 @@ bool StructReader::isCanonical(const word **readHead,
   WordCount32 dataSize = this->getDataSectionSize() / BITS_PER_WORD;
 
   // Mark whether the struct is properly truncated
-  // TODO: uint64_t is surely the wrong type here, but word is uncopyable
   if (dataSize != 0) {
     *dataTrunc = this->getDataField<uint64_t>(dataSize - 1) != 0;
   } else {

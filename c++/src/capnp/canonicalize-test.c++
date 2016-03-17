@@ -57,19 +57,12 @@ KJ_TEST("isCanonical requires pointer preorder") {
                                                        3)};
   SegmentArrayMessageReader outOfOrder(kj::arrayPtr(segments, 1));
 
-  auto ap = outOfOrder.getRoot<AnyPointer>();
-  KJ_ASSERT(ap.isStruct());
-  auto as = ap.getAs<AnyStruct>();
-  auto aps = as.getPointerSection();
-  KJ_ASSERT(aps.size() == 2, aps.size());
-
   KJ_ASSERT(!outOfOrder.isCanonical());
 }
 
 KJ_TEST("isCanonical requires dense packing") {
    AlignedData<3> gapSegment = {{
     //Struct pointer, data after a gap
-    //TODO validate offset encoding, supposed to be a 1 in the field
     0x03, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
     //The gap
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -146,19 +139,6 @@ KJ_TEST("isCanonical requires truncation of 0-valued struct fields\
     kj::arrayPtr(nonTruncatedList.words, 6)
   };
   SegmentArrayMessageReader nonTruncated(kj::arrayPtr(segments, 1));
-
-  auto ap = nonTruncated.getRoot<AnyPointer>();
-
-  KJ_ASSERT(ap.isList());
-
-  auto al = ap.getAs<AnyList>();
-
-  KJ_ASSERT(al.getElementSize() == ElementSize::INLINE_COMPOSITE);
-
-  auto als = al.as<List<AnyStruct>>();
-  KJ_ASSERT(als.size() == 2, als.size());
-  auto as0 = als[0];
-  KJ_ASSERT(as0.getDataSection().size() == 16, as0.getDataSection().size());
 
   KJ_ASSERT(!nonTruncated.isCanonical());
 }
