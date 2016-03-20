@@ -222,7 +222,7 @@ struct AnyPointer {
     // Valid for T = List<?>.
 
     template <typename T>
-    inline void setAsCanonical(ReaderFor<T> value);
+    inline void setCanonicalAs(ReaderFor<T> value);
 
     inline void set(Reader value) { builder.copyFrom(value.reader); }
     // Set to a copy of another AnyPointer.
@@ -799,7 +799,7 @@ inline void AnyPointer::Builder::setAs(ReaderFor<T> value) {
 }
 
 template <typename T>
-inline void AnyPointer::Builder::setAsCanonical(ReaderFor<T> value) {
+inline void AnyPointer::Builder::setCanonicalAs(ReaderFor<T> value) {
   return _::PointerHelpers<T>::setCanonical(builder, value);
 }
 
